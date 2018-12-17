@@ -8,8 +8,8 @@ module Graphiti
 
       def generate
         {  }.tap do |links|
-          links[:first] = pagination_link(1)
-          links[:last] = pagination_link(last_page)
+          links[:first] = pagination_link(1) unless last_page == 0
+          links[:last] = pagination_link(last_page) unless last_page == 0
           links[:prev] = pagination_link(current_page - 1) unless current_page == 1
           links[:next] = pagination_link(current_page + 1) unless current_page == last_page
         end.select{|k,v| !v.nil? }
