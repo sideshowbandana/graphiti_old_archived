@@ -82,10 +82,8 @@ module Graphiti
       end
     end
 
-    def pagination_links
-      @pagination_links ||= if pagination_links?
-                              pagination_links_payload.generate
-                            end
+    def pagination
+      @pagination ||= Delegates::Pagination.new(self)
     end
 
     def save(action: :create)
@@ -99,6 +97,16 @@ module Graphiti
           @payload.relationships
       end
       @data, success = validator.to_a
+
+      if success
+        # If the context namespace is `update` or `create`, certain
+        # adapters will cause N+1 validation calls, so lets explicitly
+        # switch to a lookup context.
+        Graphiti.with_context(Graphiti.context[:object], :show) do
+          @scope.resolve_sideloads([@data])
+        end
+      end
+
       success
     end
 
@@ -121,7 +129,10 @@ module Graphiti
     end
 
     def include_hash
-      @payload ? @payload.include_hash : @query.include_hash
+      @include_hash ||= begin
+        base = @payload ? @payload.include_hash : {}
+        base.deep_merge(@query.include_hash)
+      end
     end
 
     def fields
@@ -137,10 +148,6 @@ module Graphiti
     end
 
     private
-
-    def pagination_links_payload
-      @pagination_links_payload ||= PaginationLinks::Payload.new(self)
-    end
 
     def persist
       @resource.transaction do
